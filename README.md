@@ -1,13 +1,17 @@
-# **PARROT** – **P**eople’s **AR**duino **R**adiation m**O**ni**T**or
-*(Arduino Leonardo / W5500 / OLED / DHT11)*
-# Parrot — a faithful, noisy little sentinel watching for radiation and raising hell when things get dangerous. #
+# PARROT
+**P**eople’s **AR**duino **R**adiation m**O**ni**T**or
+*Parrot — a faithful, noisy little sentinel watching for radiation and raising hell when things get dangerous.*
+* [PARROT] CPM - 138
+* [PARROT] High Radiation Reading - SQUAWK!!
+
+*PARROT warns the people!  By the peoples, of the peoples, for the peoples!  Viva la monitoreo!!!*
 
 ## Overview
 ### Firmware Version: **v1.3.0**
 This firmware runs on an Arduino Leonardo equipped with:
 
 - Geiger counter kit (VIN → Pin 2 interrupt)
-- W5500 Ethernet (PoE or splitter)
+- DFRobot POE Ethernet Leonardo HAT
 - RGB system LED
 - OLED display (SSD1306, 128x64)
 - DHT11 interior temperature / humidity sensor

@@ -1,16 +1,9 @@
-# Parrot – People’s ARduino Radiation mOniTor
+# **PARROT** – **P**eople’s **AR**duino **R**adiation m**O**ni**T**or
 *(Arduino Leonardo / W5500 / OLED / DHT11)*
-
-
-
-
-### Firmware Version: **v1.3.0**
-### Build: (__DATE__ __TIME__)
-
 # Parrot — a faithful, noisy little sentinel watching for radiation and raising hell when things get dangerous. #
 
 ## Overview
-
+### Firmware Version: **v1.3.0**
 This firmware runs on an Arduino Leonardo equipped with:
 
 - Geiger counter kit (VIN → Pin 2 interrupt)

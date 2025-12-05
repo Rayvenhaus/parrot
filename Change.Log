@@ -1,0 +1,110 @@
+GeigerMonitor - Firmware Change Log
+===================================
+
+Base Project: rjelbert/geiger_counter  
+Original Author: JiangJie Zhang (cajoetech@qq.com)  
+License: MIT
+
+-----------------------------------
+Version 1.3.1  (LATEST)
+-----------------------------------
+
+• Project renamed to **Parrot – People’s ARduino Radiation mOniTor**
+  - All user-facing references updated (Serial banner, README, etc.)
+  - Device ID updated to PARROT-001
+
+• Licensing and attribution clarified:
+  - Added MIT LICENSE file with copyright:
+      (c) 2025 Steven Sheeley
+  - Added NOTICE file acknowledging original work:
+      rjelbert/geiger_counter (MIT License), JiangJie Zhang
+  - Documented that Parrot is now an independent project derived from
+    the original codebase.
+  
+• No functional changes to firmware behaviour compared to v1.3.0.
+
+-----------------------------------
+Version 1.3.0
+-----------------------------------
+
+• Added **hardware watchdog timer (8 seconds)**  
+  - Prevents hangs, auto-reset on failure  
+
+• Added **reset cause detection** using MCUSR flags  
+  - Reports POR, BOR, WDT, external reset etc.
+
+• Added **Service Mode at boot**
+  - Hold Display Button during power-up
+  - OLED ON
+  - Short log period (10s)
+  - No radmon uploads
+  - Ideal for on-pole maintenance
+
+• Added **radiation safety bands**
+  - LOW
+  - NORMAL (20 - 40 CPM)
+  - WARNING (≥100 CPM)
+  - DANGER (≥275 CPM)
+
+• Added **smart LED rules**
+  - RED    = Sensor fault (3× zero CPM)
+  - YELLOW = High internal temp or HTTP failure
+  - GREEN  = All good
+
+• Added **brown-out and reset logging at startup**
+
+• Added **fail reason tracking**
+  - DHCP, connect fail, HTTP fail
+
+• Added **optional telemetry endpoint stub**
+  - Disabled by default (STATUS_PING_ENABLE = 0)
+
+• Display shows:
+  - Status
+  - Uptime
+  - Last upload age
+  - Temp, humidity
+  - Fail reason
+  - IP address
+
+• EEPROM usage remains unchanged
+
+-----------------------------------
+Version 1.2.0
+-----------------------------------
+
+• Added high-temperature warning for interior environment (~50°C threshold)
+• Added version number FW_VERSION and build string (__DATE__, __TIME__)
+• Added OLED toggle button for diagnostics
+• Added HTTP status code detection (200/204 success)
+• Added uptime counter and time since last successful upload
+• Added zero-CPM sensor fault counter
+
+-----------------------------------
+Version 1.1.1
+-----------------------------------
+
+• Added firmware identity and versioning
+• Added watchdog-ready structure
+• Added button for display toggling
+• Added internal status display
+
+-----------------------------------
+Version 1.1.0
+-----------------------------------
+
+• Removed dynamic String usage
+• Added atomic count reset
+• Added Ethernet.maintain()
+• Added RGB LED status
+• Added OLED framework
+
+-----------------------------------
+Initial Release
+-----------------------------------
+• Basic CPM capture and upload to radmon.org
+• Original fork from rjelbert/geiger_counter
+
+-----------------------------------
+End of Change Log
+-----------------------------------

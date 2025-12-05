@@ -1,0 +1,17 @@
+Parrot – People’s ARduino Radiation mOniTor
+
+This project contains code originally derived from:
+
+  - rjelbert/geiger_counter
+    Copyright (c)
+    JiangJie Zhang
+    MIT License
+
+Substantial modifications, extensions, and architectural redesign have been
+performed. Parrot is now an independent project, separate from the original.
+
+This NOTICE file is included in accordance with the MIT License attribution
+requirements and should remain with all copies or substantial portions of
+the Software.
+
+No endorsement by the original authors is implied.

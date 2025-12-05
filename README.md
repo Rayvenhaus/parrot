@@ -2,8 +2,12 @@
 *(Arduino Leonardo / W5500 / OLED / DHT11)*
 
 
+
+
 ### Firmware Version: **v1.3.0**
 ### Build: (__DATE__ __TIME__)
+
+# Parrot — a faithful, noisy little sentinel watching for radiation and raising hell when things get dangerous. #
 
 ## Overview
 

@@ -97,7 +97,7 @@ unsigned long cpm;
 unsigned int multiplier;
 unsigned long previousMillis;
 float usvh;
-
+char buffer[64];
 byte okflag;
 byte zeroCount;
 unsigned long lastSuccessMillis;
@@ -201,7 +201,7 @@ void sendStatusPing() {
     if (!API_SECRET[0]) return;
 
     if (statusClient.connect(STATUS_HOST, STATUS_PORT)) {
-        Serial.println("Initating status ping to Parrot HQ....")
+        Serial.println("Initating status ping to Parrot HQ....");
         unsigned long up = (millis() - bootMillis) / 1000UL;
         RadState rs = getRadiationState(cpm);
 
@@ -274,7 +274,6 @@ void sendStatusPing() {
 // ----------------- Setup -----------------
 
 void setup() {
-    char buffer[64];
     counts = 0;
     cpm = 0;
     multiplier = MAX_PERIOD / LOG_PERIOD;
@@ -320,7 +319,7 @@ void setup() {
 
     wdt_enable(WDTO_8S);
     updateStatusLED();
-    Serial.println("Boot sequence completed, system initalized.")
+    Serial.println("Boot sequence completed, system initalized.");
 }
 
 // ----------------- Main loop -----------------

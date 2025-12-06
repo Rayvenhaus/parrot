@@ -410,7 +410,7 @@ void loop() {
         if (client.connect(server, 80)) {
             char v[12];
             snprintf(v, sizeof(v), "%lu", cpm);
-            
+            // https://radmon.org/radmon.php?function=submit&user=Simomax&password=datasendingpassword&value=100&unit=CPM           
             client.print(F("GET /radmon.php?function=submit&user=YOUR_USERNAME&password=YOUR_PASSWORD&value="));
             client.print(v);
             client.println(F("&unit=CPM HTTP/1.1"));

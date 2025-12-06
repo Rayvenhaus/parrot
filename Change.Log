@@ -1,110 +1,73 @@
-GeigerMonitor - Firmware Change Log
-===================================
+Parrot Firmware Change Log
+===========================
 
-Base Project: rjelbert/geiger_counter  
-Original Author: JiangJie Zhang (cajoetech@qq.com)  
-License: MIT
+Project: Parrot – People’s ARduino Radiation mOniTor
+Firmware build string: FW_NAME FW_VERSION ("__DATE__ __TIME__")
 
------------------------------------
-Version 1.3.1  (LATEST)
------------------------------------
+Version 1.3.2  (2025-12-06)
+---------------------------
+- Removed the SSD1306 OLED debug display and all Adafruit_GFX/Adafruit_SSD1306 dependencies to reduce flash usage and keep the firmware within the ATmega32u4 (Leonardo) limits.
+- Removed the front-panel button and service mode; the device now always runs in normal logging mode using LOG_PERIOD.
+- Simplified the main loop by eliminating display and button branches; status is now conveyed solely via the RGB system LED and serial debug output.
+- Kept full radmon.org upload, DHT11 interior temperature/humidity monitoring, watchdog, reset cause tracking, and Parrot HQ heartbeat telemetry.
+- Updated firmware version to v1.3.2 and adjusted boot logging messages accordingly.
 
-• Project renamed to **Parrot – People’s ARduino Radiation mOniTor**
-  - All user-facing references updated (Serial banner, README, etc.)
-  - Device ID updated to PARROT-001
+Version 1.3.1  (2025-12-05)
+---------------------------
+- Introduced Parrot HQ heartbeat support:
+  - Added STATUS_PING_ENABLE, STATUS_HOST, STATUS_PORT, STATUS_PATH, DEVICE_ID, and API_SECRET compile-time configuration.
+  - Implemented sendStatusPing() to call the Parrot HQ endpoint with device ID, firmware version, uptime, CPM, radiation state, HTTP status of the last radmon.org upload, interior temperature/humidity, zero-CPM streak, last fail reason, and reset cause flags.
+  - Heartbeat is sent every logging cycle after the radmon.org upload, regardless of radmon success/failure.
+- Converted the firmware identity to Parrot:
+  - Added FW_NAME, FW_VERSION, and FW_BUILD using __DATE__ and __TIME__ for traceable builds.
+  - Updated serial boot messages to include the firmware build string.
 
-• Licensing and attribution clarified:
-  - Added MIT LICENSE file with copyright:
-      (c) 2025 Steven Sheeley
-  - Added NOTICE file acknowledging original work:
-      rjelbert/geiger_counter (MIT License), JiangJie Zhang
-  - Documented that Parrot is now an independent project derived from
-    the original codebase.
-  
-• No functional changes to firmware behaviour compared to v1.3.0.
+Version 1.3.0  (2025-12-04)
+---------------------------
+- Added DHT11 interior environment monitoring:
+  - Reads temperature (°C) and humidity (%) once per logging period.
+  - Stores the last valid readings and exposes them to the status LED logic and Parrot HQ heartbeat payload.
+- Introduced high-temperature warning handling:
+  - Configurable HIGH_TEMP_THRESHOLD_C (default 50°C).
+  - When the enclosure temperature exceeds the threshold, the RGB LED moves to WARN (yellow) regardless of network state.
+- Refined RGB LED status logic:
+  - RED   = sensor error (no pulses for several consecutive logging periods).
+  - YELLOW = network or high-temperature warning (non-fatal issues).
+  - GREEN = healthy operation with successful radmon.org uploads and no active error flags.
 
------------------------------------
-Version 1.3.0
------------------------------------
+Version 1.2.0  (2025-12-02)
+---------------------------
+- Switched from body-text "OK" detection to proper HTTP status code parsing for radmon.org:
+  - Reads the HTTP/1.x status line and extracts the numeric code.
+  - Treats 200 and 204 as success; all other codes are surfaced as failures.
+  - Stores lastHttpStatusCode and a compact lastFailReason (FAIL_NONE, FAIL_CONNECT, FAIL_NO_OK, FAIL_DHCP).
+- Improved robustness of the radmon.org upload path:
+  - Added a per-request timeout to avoid hanging on stalls.
+  - Ensured EthernetClient is always stopped after a request to prevent resource leaks.
+  - Added explicit error handling for connection failures vs. non-2xx HTTP responses.
 
-• Added **hardware watchdog timer (8 seconds)**  
-  - Prevents hangs, auto-reset on failure  
+Version 1.1.1  (2025-12-01)
+---------------------------
+- General refactor and hardening of the original sketch:
+  - Introduced LOG_PERIOD/MAX_PERIOD and multiplier-based CPM computation with safe bounds to prevent runaway CPM values.
+  - Added CONV_FACTOR and usvh calculations to maintain µSv/h derivation from CPM.
+  - Implemented zero-count tracking to detect long-term sensor failure (no pulses for multiple consecutive periods).
+  - Normalised and clarified comments, naming, and structure to improve maintainability.
+- Added system watchdog and reset-cause awareness:
+  - Enabled the AVR hardware watchdog at 8s and reset it each main loop cycle.
+  - Captured MCUSR at early init (POR/BOR/EXT/WDRF flags) and cleared it for the next reset.
+- Introduced a three-colour RGB status LED:
+  - Common-cathode wiring with named helper macros for OK, WARN, and ERROR states.
+  - Mapped LED behaviour to network and sensor state to give a simple external health indicator.
 
-• Added **reset cause detection** using MCUSR flags  
-  - Reports POR, BOR, WDT, external reset etc.
+Version 1.0.0  (Initial Parrot fork)
+------------------------------------
+- Forked from rjelbert/geiger_counter and renamed the project to Parrot – People’s ARduino Radiation mOniTor.
+- Cleaned and documented the original CPM logging logic for use with an Arduino Leonardo + W5500 Ethernet (PoE) shield.
+- Implemented radmon.org support using a simple HTTP GET with CPM and unit=CPM.
+- Added basic serial diagnostics (CPM, µSv/h) and initial wiring documentation in the README.
 
-• Added **Service Mode at boot**
-  - Hold Display Button during power-up
-  - OLED ON
-  - Short log period (10s)
-  - No radmon uploads
-  - Ideal for on-pole maintenance
-
-• Added **radiation safety bands**
-  - LOW
-  - NORMAL (20 - 40 CPM)
-  - WARNING (≥100 CPM)
-  - DANGER (≥275 CPM)
-
-• Added **smart LED rules**
-  - RED    = Sensor fault (3× zero CPM)
-  - YELLOW = High internal temp or HTTP failure
-  - GREEN  = All good
-
-• Added **brown-out and reset logging at startup**
-
-• Added **fail reason tracking**
-  - DHCP, connect fail, HTTP fail
-
-• Added **optional telemetry endpoint stub**
-  - Disabled by default (STATUS_PING_ENABLE = 0)
-
-• Display shows:
-  - Status
-  - Uptime
-  - Last upload age
-  - Temp, humidity
-  - Fail reason
-  - IP address
-
-• EEPROM usage remains unchanged
-
------------------------------------
-Version 1.2.0
------------------------------------
-
-• Added high-temperature warning for interior environment (~50°C threshold)
-• Added version number FW_VERSION and build string (__DATE__, __TIME__)
-• Added OLED toggle button for diagnostics
-• Added HTTP status code detection (200/204 success)
-• Added uptime counter and time since last successful upload
-• Added zero-CPM sensor fault counter
-
------------------------------------
-Version 1.1.1
------------------------------------
-
-• Added firmware identity and versioning
-• Added watchdog-ready structure
-• Added button for display toggling
-• Added internal status display
-
------------------------------------
-Version 1.1.0
------------------------------------
-
-• Removed dynamic String usage
-• Added atomic count reset
-• Added Ethernet.maintain()
-• Added RGB LED status
-• Added OLED framework
-
------------------------------------
-Initial Release
------------------------------------
-• Basic CPM capture and upload to radmon.org
-• Original fork from rjelbert/geiger_counter
-
------------------------------------
-End of Change Log
------------------------------------
+Notes
+-----
+- This change log describes the Parrot firmware evolution after the fork from rjelbert/geiger_counter. The original upstream project remains MIT-licensed and is credited in NOTICE and README.md.
+- Version dates are approximate and based on the refactor sequence; exact commit timestamps should be taken from the Git history.

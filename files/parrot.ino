@@ -194,83 +194,130 @@ int readHttpStatusCode(EthernetClient &c, unsigned long timeoutMs) {
 }
 
 // ----------------- Status ping to HQ -----------------
-
 void sendStatusPing() {
-#if STATUS_PING_ENABLE
-    if (Ethernet.linkStatus() != LinkON) return;
-    if (!API_SECRET[0]) return;
-
-    if (statusClient.connect(STATUS_HOST, STATUS_PORT)) {
-        Serial.println("Initating status ping to Parrot HQ....");
-        unsigned long up = (millis() - bootMillis) / 1000UL;
-        RadState rs = getRadiationState(cpm);
-
-        const char *radStr;
-        switch (rs) {
-            case RAD_LOW:    radStr = "LOW";    break;
-            case RAD_NORMAL: radStr = "NORM";   break;
-            case RAD_WARN:   radStr = "WARN";   break;
-            case RAD_DANGER: radStr = "DANGER"; break;
-            default:         radStr = "LOW";    break;
+    #if STATUS_PING_ENABLE
+        Serial.println(F("[HQ] Status ping start"));
+    
+        if (Ethernet.linkStatus() != LinkON) {
+            Serial.println(F("[HQ] Link DOWN, skipping ping"));
+            return;
         }
-
-        const char *failStr;
-        switch (lastFailReason) {
-            case FAIL_NONE:    failStr = "NONE";    break;
-            case FAIL_CONNECT: failStr = "CONNECT"; break;
-            case FAIL_NO_OK:   failStr = "NO_OK";   break;
-            case FAIL_DHCP:    failStr = "DHCP";    break;
-            default:           failStr = "UNK";     break;
+        if (!API_SECRET[0]) {
+            Serial.println(F("[HQ] API_SECRET not set, skipping ping"));
+            return;
         }
-
-        statusClient.print("GET ");
-        statusClient.print(STATUS_PATH);
-        statusClient.print("?id=");
-        statusClient.print(DEVICE_ID);
-        statusClient.print("&secret=");
-        statusClient.print(API_SECRET);
-        statusClient.print("&fw=");
-        statusClient.print(FW_VERSION);
-        statusClient.print("&up=");
-        statusClient.print(up);
-        statusClient.print("&cpm=");
-        statusClient.print(cpm);
-        statusClient.print("&rad=");
-        statusClient.print(radStr);
-        statusClient.print("&http=");
-        statusClient.print(lastHttpStatusCode);
-        statusClient.print("&temp=");
-        if (interiorTempC > -100.0f) {
-            statusClient.print(interiorTempC, 1);
-        }
-        statusClient.print("&hum=");
-        if (interiorHum >= 0.0f) {
-            statusClient.print((int)(interiorHum + 0.5f));
-        }
-        statusClient.print("&z=");
-        statusClient.print(zeroCount);
-        statusClient.print("&fail=");
-        statusClient.print(failStr);
-        statusClient.print("&reset=");
-        statusClient.print(resetCause, HEX);
-        statusClient.println(" HTTP/1.1");
-        statusClient.print("Host: ");
-        statusClient.println(STATUS_HOST);
-        statusClient.println("Connection: close");
-        statusClient.println();
-
-        unsigned long start = millis();
-        while (millis() - start < 2000UL && statusClient.connected()) {
-            while (statusClient.available()) {
-                (void)statusClient.read();
+    
+        if (statusClient.connect(STATUS_HOST, STATUS_PORT)) {
+            Serial.print(F("[HQ] Connected to "));
+            Serial.print(STATUS_HOST);
+            Serial.print(F(":"));
+            Serial.println(STATUS_PORT);
+    
+            unsigned long up = (millis() - bootMillis) / 1000UL;
+            RadState rs = getRadiationState(cpm);
+    
+            const char *radStr;
+            switch (rs) {
+                case RAD_LOW:    radStr = "LOW";    break;
+                case RAD_NORMAL: radStr = "NORM";   break;
+                case RAD_WARN:   radStr = "WARN";   break;
+                case RAD_DANGER: radStr = "DANGER"; break;
+                default:         radStr = "LOW";    break;
             }
+    
+            const char *failStr;
+            switch (lastFailReason) {
+                case FAIL_NONE:    failStr = "NONE";    break;
+                case FAIL_CONNECT: failStr = "CONNECT"; break;
+                case FAIL_NO_OK:   failStr = "NO_OK";   break;
+                case FAIL_DHCP:    failStr = "DHCP";    break;
+                default:           failStr = "UNK";     break;
+            }
+    
+            Serial.print(F("[HQ] Preparing query: "));
+            Serial.print(F("GET "));
+            Serial.print(STATUS_PATH);
+            Serial.print(F("?id="));
+            Serial.print(DEVICE_ID);
+            Serial.print(F("&secret=****"));
+            Serial.print(F("&fw="));
+            Serial.print(FW_VERSION);
+            Serial.print(F("&up="));
+            Serial.print(up);
+            Serial.print(F("&cpm="));
+            Serial.print(cpm);
+            Serial.print(F("&rad="));
+            Serial.print(radStr);
+            Serial.print(F("&http="));
+            Serial.print(lastHttpStatusCode);
+            Serial.print(F("&temp="));
+            if (interiorTempC > -100.0f) {
+                Serial.print(interiorTempC, 1);
+            }
+            Serial.print(F("&hum="));
+            if (interiorHum >= 0.0f) {
+                Serial.print((int)(interiorHum + 0.5f));
+            }
+            Serial.print(F("&z="));
+            Serial.print(zeroCount);
+            Serial.print(F("&fail="));
+            Serial.print(failStr);
+            Serial.print(F("&reset="));
+            Serial.println(resetCause, HEX);
+    
+            statusClient.print("GET ");
+            statusClient.print(STATUS_PATH);
+            statusClient.print("?id=");
+            statusClient.print(DEVICE_ID);
+            statusClient.print("&secret=");
+            statusClient.print(API_SECRET);
+            statusClient.print("&fw=");
+            statusClient.print(FW_VERSION);
+            statusClient.print("&up=");
+            statusClient.print(up);
+            statusClient.print("&cpm=");
+            statusClient.print(cpm);
+            statusClient.print("&rad=");
+            statusClient.print(radStr);
+            statusClient.print("&http=");
+            statusClient.print(lastHttpStatusCode);
+            statusClient.print("&temp=");
+            if (interiorTempC > -100.0f) {
+                statusClient.print(interiorTempC, 1);
+            }
+            statusClient.print("&hum=");
+            if (interiorHum >= 0.0f) {
+                statusClient.print((int)(interiorHum + 0.5f));
+            }
+            statusClient.print("&z=");
+            statusClient.print(zeroCount);
+            statusClient.print("&fail=");
+            statusClient.print(failStr);
+            statusClient.print("&reset=");
+            statusClient.print(resetCause, HEX);
+            statusClient.println(" HTTP/1.1");
+            statusClient.print("Host: ");
+            statusClient.println(STATUS_HOST);
+            statusClient.println("Connection: close");
+            statusClient.println();
+    
+            unsigned long start = millis();
+            while (millis() - start < 2000UL && statusClient.connected()) {
+                while (statusClient.available()) {
+                    (void)statusClient.read();
+                }
+            }
+    
+            statusClient.stop();
+            Serial.println(F("[HQ] Status ping complete, connection closed"));
+        } else {
+            Serial.print(F("[HQ] Connect failed to "));
+            Serial.print(STATUS_HOST);
+            Serial.print(F(":"));
+            Serial.println(STATUS_PORT);
         }
-
-        statusClient.stop();
-    }
-#endif
+    #endif
 }
-
 // ----------------- Setup -----------------
 
 void setup() {

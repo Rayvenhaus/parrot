@@ -15,7 +15,7 @@
 // ----------------- Firmware Version -----------------
 
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.3.2"
+#define FW_VERSION  "v1.4.0"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 
 // ----------------- Device Identity / Telemetry -----------------

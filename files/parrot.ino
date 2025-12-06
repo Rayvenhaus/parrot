@@ -373,21 +373,16 @@ void setup() {
 void loop() {
     wdt_reset();
     Ethernet.maintain();
-
     unsigned long currentMillis = millis();
-
     if (currentMillis - previousMillis >= LOG_PERIOD) {
         previousMillis = currentMillis;
-
         noInterrupts();
         unsigned long localCounts = counts;
         counts = 0;
         interrupts();
-
         cpm = localCounts * multiplier;
         if (cpm > 50000UL) cpm = 0;
         usvh = cpm * CONV_FACTOR;
-
         float t = dht.readTemperature();
         float h = dht.readHumidity();
         if (!isnan(t) && !isnan(h)) {
@@ -398,30 +393,25 @@ void loop() {
         Serial.println(buffer);
         sprintf(buffer, "Hum: %d", interiorHum);
         Serial.println(buffer);
-
         if (cpm == 0) {
             if (zeroCount < 255) zeroCount++;
         } else {
             zeroCount = 0;
         }
-
         // radmon upload
         Serial.println(F("Connecting to radmon..."));
         if (client.connect(server, 80)) {
             char v[12];
             snprintf(v, sizeof(v), "%lu", cpm);
-            // https://radmon.org/radmon.php?function=submit&user=Simomax&password=datasendingpassword&value=100&unit=CPM           
             client.print(F("GET /radmon.php?function=submit&user=YOUR_USERNAME&password=YOUR_PASSWORD&value="));
-            client.print(v);
+            client.print(F("(v));
             client.println(F("&unit=CPM HTTP/1.1"));
             client.println(F("Host: radmon.org"));
-            client.println("User-Agent: Parrot Geiger Counter Board");
+            client.println(F("User-Agent: Parrot Geiger Counter Board"));
             client.println(F("Connection: close"));
-            client.println();
-
+            client.println(F(""));
             int statusCode = readHttpStatusCode(client, 5000UL);
             lastHttpStatusCode = statusCode;
-
             if (statusCode == 200 || statusCode == 204) {
                 okflag = 2;
                 Serial.println("radmon.org update accepted!"); 
@@ -432,7 +422,6 @@ void loop() {
                 Serial.println("radmon.org update failed.");
                 lastFailReason = FAIL_NO_OK;
             }
-
             client.stop();
         } else {
             lastFailReason = FAIL_CONNECT;
@@ -440,7 +429,6 @@ void loop() {
             Serial.println("radmon.org update did not connect.");
             client.stop();
         }
-
         // Always ping HQ
         sendStatusPing();
         updateStatusLED();

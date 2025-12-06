@@ -5,7 +5,7 @@ It continuously measures radiation (CPM) and reports to [radmon.org](https://rad
 rich telemetry heartbeat to a self-hosted **Parrot HQ** web backend.
 
 `*PARROT warns the people!  By the peoples, of the peoples, for the peoples!  Viva la monitoreo!!!`
-> Originally forked from `[rjelbert/geiger_counter](https://github.com/rjelbert/geiger_counter/tree/main/arduino_jelbert_geiger_counter)` and now heavily extended and refactored into a full remote monitor.
+> Originally forked from [rjelbert/geiger_counter](https://github.com/rjelbert/geiger_counter/tree/main/arduino_jelbert_geiger_counter)** and now heavily extended and refactored into a full remote monitor.
 
 ---
 

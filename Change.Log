@@ -4,6 +4,12 @@ Parrot Firmware Change Log
 Project: Parrot – People’s ARduino Radiation mOniTor
 Firmware build string: FW_NAME FW_VERSION ("__DATE__ __TIME__")
 
+Version 1.4.1  (2025-12-07)
+---------------------------
+- Fix syntax errors in HTTP request for radmon
+- Fix formatting in README.md
+- Updated fork reference in README.md
+
 Version 1.4.0  (2025-12-06)
 ---------------------------
 - Removed the SSD1306 OLED debug display and all Adafruit_GFX/Adafruit_SSD1306 dependencies to reduce flash usage and keep the firmware within the ATmega32u4 (Leonardo) limits.

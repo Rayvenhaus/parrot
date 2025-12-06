@@ -102,9 +102,9 @@ Open the sketch and adjust the configuration section near the top:
 
 ```cpp
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.3.2"
+#define FW_VERSION  "v1.4.0"
 
-#define DEVICE_ID   "PARROT-001"
+#define DEVICE_ID   "REPLACE_WITH_YOUR_PARROT_ID"
 #define API_SECRET  "REPLACE_WITH_YOUR_SECRET"
 
 #define STATUS_PING_ENABLE  1

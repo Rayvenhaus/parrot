@@ -1,6 +1,16 @@
 Parrot Firmware Change Log
 ===========================
-Project: Parrot – People’s ARduino Radiation mOniTor
+Project: Parrot - People's ARduino Radiation mOniTor
+
+Version 1.4.4  (2025-12-07)
+---------------------------
+- Since removal of OLED screen limits debugging, serial port output was increased for debugging, hence....
+- Introduces a DEBUG_SERIAL flag to enable or disable serial debugging output, however, not all print statements are left out, hence....
+- Refactors serial print statements to be conditional on debug mode, other than initial boot statements
+- Improved code organization for API credentials
+- Fixed bug in CPM caculation that was always return CPM=0
+- Streamlined CPM calculation and setup sequence for clarity and reliability.
+- Moved radmon.org credentials to global vars
 
 Version 1.4.3  (2025-12-07)
 ---------------------------

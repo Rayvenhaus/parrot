@@ -15,10 +15,12 @@
 // ----------------- Firmware Version -----------------
 
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.4.2"
+#define FW_VERSION  "v1.4.3"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 
 // ----------------- Device Identity / Telemetry -----------------
+#define RADMON_USER     "REPLACE_WITH_YOUR_USERNAME"
+#define RADMON_PASS     "REPLACE_WITH_YOUR_PASSWORD"
 
 #define DEVICE_ID           "PARROT-001"
 #define API_SECRET          "REPLACE_WITH_YOUR_SECRET"
@@ -108,6 +110,7 @@ unsigned long bootMillis;
 
 FailReason lastFailReason;
 int  lastHttpStatusCode;
+int  hqHttpStatusCode;
 
 float interiorTempC;
 float interiorHum;
@@ -310,12 +313,26 @@ void sendStatusPing() {
             statusClient.println("Connection: close");
             statusClient.println();
 
+            int statusCode = readHttpStatusCode(statusClient, 5000UL);
+            hqHttpStatusCode = statusCode;
+            Serial.print(F("[HQ] HTTP status: "));
+            Serial.println(statusCode);
+
+            char body[192];
+            size_t idx = 0;
             unsigned long start = millis();
-            while (millis() - start < 2000UL && statusClient.connected()) {
+            while (millis() - start < 1000UL && statusClient.connected()) {
                 while (statusClient.available()) {
-                    (void)statusClient.read();
+                    char ch = statusClient.read();
+                    if (idx < sizeof(body) - 1) {
+                        body[idx++] = ch;
+                    }
                 }
             }
+            body[idx] = '\0';
+
+            Serial.print(F("[HQ] Raw body: "));
+            Serial.println(body);
 
             statusClient.stop();
             Serial.println(F("[HQ] Status ping complete, connection closed"));
@@ -335,10 +352,22 @@ void uploadToRadmon() {
     if (client.connect(server, 80)) {
         char v[12];
         snprintf(v, sizeof(v), "%lu", cpm);
-
-        client.print(F("GET /radmon.php?function=submit&user=YOUR_USERNAME&password=YOUR_PASSWORD&value="));
-        client.print(v);
-        client.println(F("&unit=CPM HTTP/1.1"));
+        Serial.print(F("[RAD] Value string (v): "));
+        Serial.println(v);
+        
+        snprintf(
+            radGET, sizeof(radGET),
+            "GET /radmon.php?function=submit&user=%s&password=%s&value=%s&unit=CPM HTTP/1.1",
+            RADMON_USER,
+            RADMON_PASS,
+            v
+        );
+        // Debug output
+        Serial.print(F("[RAD] Full request: "));
+        Serial.println(radGET);
+        
+        // Send to radmon
+        client.println(radGET);
         client.println(F("Host: radmon.org"));
         client.println(F("User-Agent: Parrot Geiger Counter Board"));
         client.println(F("Connection: close"));
@@ -374,6 +403,7 @@ void setup() {
     bootMillis = millis();
     lastFailReason = FAIL_NONE;
     lastHttpStatusCode = 0;
+    hqHttpStatusCode = 0;
     interiorTempC = -127.0f;
     interiorHum   = -1.0f;
     zeroCount = 0;
@@ -437,6 +467,10 @@ void loop() {
 
         cpm = localCounts * multiplier;
         if (cpm > CPM_MAX_VALID) cpm = 0;
+        if (cpm == 0) {
+            Serial.println(F("!!! WARNING: CPM is ZERO. This is abnormal unless the tube is disconnected or dead."));
+            Serial.println(F("!!! Sending CPM=0 to radmon.org"));
+        }
         usvh = cpm * CONV_FACTOR;
 
         float t = dht.readTemperature();
@@ -452,7 +486,9 @@ void loop() {
         Serial.println(interiorTempC);
         Serial.print(F("Hum: "));
         Serial.println(interiorHum);
-
+        Serial.print(F("CPM: "));
+        Serial.println(cpm);
+        
         if (cpm == 0) {
             if (zeroCount < 255) zeroCount++;
         } else {

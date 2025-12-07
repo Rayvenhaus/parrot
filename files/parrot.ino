@@ -12,25 +12,33 @@
 #include <avr/wdt.h>
 #include <avr/io.h>
 
+// ---------------- Debug Mode ----------------
+
+#define DEBUG_SERIAL  0    // set to 1 to enable serial debugging, 0 for quiet firmware
+
 // ----------------- Firmware Version -----------------
 
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.4.3"
+#define FW_VERSION  "v1.4.4"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 
 // ----------------- Device Identity / Telemetry -----------------
-#define RADMON_USER     "REPLACE_WITH_YOUR_USERNAME"
-#define RADMON_PASS     "REPLACE_WITH_YOUR_PASSWORD"
-
-#define DEVICE_ID           "PARROT-001"
-#define API_SECRET          "REPLACE_WITH_YOUR_SECRET"
 
 #define STATUS_PING_ENABLE  1
 #define STATUS_HOST         "www.myndworx.com"
 #define STATUS_PORT         80
 #define STATUS_PATH         "/parrot/api/status.php"
 
-// ----------------- Radiation Safety -----------------
+// ------------------ Parrot HQ API Credentials ------------------
+#define DEVICE_ID           "PARROT001"
+#define API_SECRET          "REPLACE_WITH_YOUR_SECRET"
+
+// ------------------- Radmon API Credentials --------------------
+
+#define RADMON_USER         "REPLACE_WITH_YOUR_USERNAME"
+#define RADMON_PASS         "REPLACE_WITH_YOUR_PASSWORD"
+
+// ---------------------- Radiation Safety -----------------------
 
 #define CPM_NORMAL_MIN        20UL
 #define CPM_NORMAL_MAX        40UL
@@ -55,7 +63,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 // ----------------- Ethernet + Radmon -----------------
 
-const byte mac[]   = { 0x2E, 0x3D, 0x4E, 0x5F, 0x6E, 0x7D };
+const byte mac[]    = { 0x2E, 0x3D, 0x4E, 0x5F, 0x6E, 0x7D };
 const char server[] = "radmon.org";
 
 EthernetClient client;
@@ -195,7 +203,7 @@ int readHttpStatusCode(EthernetClient &c, unsigned long timeoutMs) {
                 }
 
                 idx = 0;
-            } else if (idx < sizeof(line) - 1) {
+            } else if (idx < (sizeof(line) - 1)) {
                 line[idx++] = ch;
             }
         }
@@ -208,22 +216,30 @@ int readHttpStatusCode(EthernetClient &c, unsigned long timeoutMs) {
 
 void sendStatusPing() {
     #if STATUS_PING_ENABLE
+        #if DEBUG_SERIAL
         Serial.println(F("[HQ] Status ping start"));
+        #endif
 
         if (Ethernet.linkStatus() != LinkON) {
+            #if DEBUG_SERIAL
             Serial.println(F("[HQ] Link DOWN, skipping ping"));
+            #endif
             return;
         }
         if (!API_SECRET[0]) {
+            #if DEBUG_SERIAL
             Serial.println(F("[HQ] API_SECRET not set, skipping ping"));
+            #endif
             return;
         }
 
         if (statusClient.connect(STATUS_HOST, STATUS_PORT)) {
+            #if DEBUG_SERIAL
             Serial.print(F("[HQ] Connected to "));
             Serial.print(STATUS_HOST);
             Serial.print(F(":"));
             Serial.println(STATUS_PORT);
+            #endif
 
             unsigned long up = (millis() - bootMillis) / 1000UL;
             RadState rs = getRadiationState(cpm);
@@ -246,8 +262,8 @@ void sendStatusPing() {
                 default:           failStr = "UNK";     break;
             }
 
-            Serial.print(F("[HQ] Preparing query: "));
-            Serial.print(F("GET "));
+            #if DEBUG_SERIAL
+            Serial.print(F("[HQ] Preparing query: GET "));
             Serial.print(STATUS_PATH);
             Serial.print(F("?id="));
             Serial.print(DEVICE_ID);
@@ -276,6 +292,7 @@ void sendStatusPing() {
             Serial.print(failStr);
             Serial.print(F("&reset="));
             Serial.println(resetCause, HEX);
+            #endif
 
             statusClient.print("GET ");
             statusClient.print(STATUS_PATH);
@@ -315,6 +332,8 @@ void sendStatusPing() {
 
             int statusCode = readHttpStatusCode(statusClient, 5000UL);
             hqHttpStatusCode = statusCode;
+
+            #if DEBUG_SERIAL
             Serial.print(F("[HQ] HTTP status: "));
             Serial.println(statusCode);
 
@@ -333,14 +352,27 @@ void sendStatusPing() {
 
             Serial.print(F("[HQ] Raw body: "));
             Serial.println(body);
+            #else
+            // In non-debug mode, just drain any remaining data quickly
+            unsigned long start = millis();
+            while (millis() - start < 1000UL && statusClient.connected()) {
+                while (statusClient.available()) {
+                    (void)statusClient.read();
+                }
+            }
+            #endif
 
             statusClient.stop();
+            #if DEBUG_SERIAL
             Serial.println(F("[HQ] Status ping complete, connection closed"));
+            #endif
         } else {
+            #if DEBUG_SERIAL
             Serial.print(F("[HQ] Connect failed to "));
             Serial.print(STATUS_HOST);
             Serial.print(F(":"));
             Serial.println(STATUS_PORT);
+            #endif
         }
     #endif
 }
@@ -348,25 +380,34 @@ void sendStatusPing() {
 // ----------------- Radmon upload -----------------
 
 void uploadToRadmon() {
+    #if DEBUG_SERIAL
     Serial.println(F("Connecting to radmon..."));
+    #endif
+
     if (client.connect(server, 80)) {
         char v[12];
         snprintf(v, sizeof(v), "%lu", cpm);
+
+        #if DEBUG_SERIAL
         Serial.print(F("[RAD] Value string (v): "));
         Serial.println(v);
-        
+        #endif
+
+        char radGET[200];
         snprintf(
-            radGET, sizeof(radGET),
+            radGET,
+            sizeof(radGET),
             "GET /radmon.php?function=submit&user=%s&password=%s&value=%s&unit=CPM HTTP/1.1",
             RADMON_USER,
             RADMON_PASS,
             v
         );
-        // Debug output
+
+        #if DEBUG_SERIAL
         Serial.print(F("[RAD] Full request: "));
         Serial.println(radGET);
-        
-        // Send to radmon
+        #endif
+
         client.println(radGET);
         client.println(F("Host: radmon.org"));
         client.println(F("User-Agent: Parrot Geiger Counter Board"));
@@ -377,18 +418,24 @@ void uploadToRadmon() {
         lastHttpStatusCode = statusCode;
 
         if (statusCode == 200 || statusCode == 204) {
+            #if DEBUG_SERIAL
             Serial.println(F("radmon.org update accepted!"));
+            #endif
             lastFailReason = FAIL_NONE;
             lastSuccessMillis = millis();
         } else {
+            #if DEBUG_SERIAL
             Serial.println(F("radmon.org update failed."));
+            #endif
             lastFailReason = FAIL_NO_OK;
         }
         client.stop();
     } else {
         lastFailReason = FAIL_CONNECT;
         lastHttpStatusCode = 0;
+        #if DEBUG_SERIAL
         Serial.println(F("radmon.org update did not connect."));
+        #endif
         client.stop();
     }
 }
@@ -411,12 +458,9 @@ void setup() {
     netReady = true;
 
     Serial.begin(9600);
-    delay(1000);
     Serial.println();
-    Serial.print(F("Booting "));
-    Serial.println(FW_BUILD);
+    Serial.println(F("Parrot v1.4.4 booting..."));
 
-    pinMode(2, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(2), tube_impulse, FALLING);
 
     pinMode(LED_R, OUTPUT);
@@ -426,6 +470,7 @@ void setup() {
 
     dht.begin();
 
+    // Ethernet / PoE HAT reset sequence (matches original working behaviour)
     pinMode(SS, OUTPUT);
     pinMode(RST, OUTPUT);
     digitalWrite(SS, HIGH);
@@ -443,11 +488,28 @@ void setup() {
     if (Ethernet.begin(mac) == 0) {
         lastFailReason = FAIL_DHCP;
         netReady = false;
+        #if DEBUG_SERIAL
+        Serial.println(F("Failed to configure Ethernet using DHCP."));
+        #endif
+    } else {
+        #if DEBUG_SERIAL
+        Serial.print(F("IP address: "));
+        for (byte thisByte = 0; thisByte < 4; thisByte++) {
+            Serial.print(Ethernet.localIP()[thisByte], DEC);
+            if (thisByte < 3) {
+                Serial.print(F("."));
+            }
+        }
+        Serial.println();
+        #endif
     }
 
     wdt_enable(WDTO_8S);
     updateStatusLED();
+
+    #if DEBUG_SERIAL
     Serial.println(F("Boot sequence completed, system initialized."));
+    #endif
 }
 
 // ----------------- Main loop -----------------
@@ -460,17 +522,14 @@ void loop() {
     if (currentMillis - previousMillis >= LOG_PERIOD) {
         previousMillis = currentMillis;
 
-        noInterrupts();
-        unsigned long localCounts = counts;
+        // CPM calculation (match original working behaviour)
+        cpm = counts * multiplier;
         counts = 0;
-        interrupts();
 
-        cpm = localCounts * multiplier;
-        if (cpm > CPM_MAX_VALID) cpm = 0;
-        if (cpm == 0) {
-            Serial.println(F("!!! WARNING: CPM is ZERO. This is abnormal unless the tube is disconnected or dead."));
-            Serial.println(F("!!! Sending CPM=0 to radmon.org"));
+        if (cpm > CPM_MAX_VALID) {
+            cpm = 0;
         }
+
         usvh = cpm * CONV_FACTOR;
 
         float t = dht.readTemperature();
@@ -482,13 +541,25 @@ void loop() {
             interiorHum   = h;
         }
 
+        #if DEBUG_SERIAL
+        Serial.print(F("[PULSE] CPM this period: "));
+        Serial.println(cpm);
+
         Serial.print(F("Temp: "));
         Serial.println(interiorTempC);
+
         Serial.print(F("Hum: "));
         Serial.println(interiorHum);
+
         Serial.print(F("CPM: "));
         Serial.println(cpm);
-        
+
+        if (cpm == 0) {
+            Serial.println(F("!!! WARNING: CPM is ZERO. This is abnormal unless the tube is disconnected or dead."));
+            Serial.println(F("!!! Sending CPM=0 to radmon.org"));
+        }
+        #endif
+
         if (cpm == 0) {
             if (zeroCount < 255) zeroCount++;
         } else {

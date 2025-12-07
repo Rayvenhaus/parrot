@@ -2,7 +2,15 @@ Parrot Firmware Change Log
 ===========================
 Project: Parrot – People’s ARduino Radiation mOniTor
 
-Version 1.4.1  (2025-12-07)
+Version 1.4.3  (2025-12-07)
+---------------------------
+- Updated firmware version to v1.4.3 and added user credentials for RADMON. 
+- Adjusted HTTP request handling and added debug output for better traceability.
+
+Version 1.4.2  (2025-12-07)
+---------------------------
+
+Version 1.4.1  (2025-12-06)
 ---------------------------
 - Fix syntax errors in HTTP request for radmon
 - Fix formatting in README.md

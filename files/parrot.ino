@@ -19,7 +19,8 @@
 // ----------------- Firmware Version -----------------
 
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.4.4"
+#define FW_VERSION  "v1.5.0"
+#define SERIAL_NUM  "ENTER_DEVICE_SERIAL_NUM"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 
 // ----------------- Device Identity / Telemetry -----------------
@@ -59,7 +60,8 @@ enum RadState : uint8_t {
 #define DHTTYPE  DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-#define HIGH_TEMP_THRESHOLD_C   50.0f
+#define TEMP_WARN_THRESHOLD_C   50.0f
+#define TEMP_HIGH_THRESHOLD_C   60.0f
 
 // ----------------- Ethernet + Radmon -----------------
 
@@ -120,6 +122,17 @@ FailReason lastFailReason;
 int  lastHttpStatusCode;
 int  hqHttpStatusCode;
 
+struct DeviceHealth {
+    uint8_t level;
+    RadState radState;
+    bool sensorFault;
+    bool tempWarn;
+    bool tempHigh;
+    bool netOK;
+};
+
+DeviceHealth health;
+
 float interiorTempC;
 float interiorHum;
 
@@ -158,22 +171,73 @@ RadState getRadiationState(unsigned long cpmValue) {
     }
 }
 
+// --------------------------New Health Model -----------------
+
+void updateHealthModel() {
+    health.radState = getRadiationState(cpm);
+
+    health.sensorFault = (zeroCount >= ZERO_CPM_FAULT_COUNT);
+
+    health.tempWarn = (interiorTempC >= TEMP_WARN_THRESHOLD_C &&
+                       interiorTempC < TEMP_HIGH_THRESHOLD_C);
+
+    health.tempHigh = (interiorTempC >= TEMP_HIGH_THRESHOLD_C);
+
+    bool netOKLocal;
+    if (lastFailReason == FAIL_DHCP) {
+        netOKLocal = false;
+    } else if (lastSuccessMillis == 0) {
+        netOKLocal = false;
+    } else {
+        unsigned long now = millis();
+        if (now - lastSuccessMillis > RADMON_FAIL_TIMEOUT_MS) {
+            netOKLocal = false;
+        } else {
+            netOKLocal = true;
+        }
+    }
+    health.netOK = netOKLocal;
+
+    uint8_t lvl = 0;
+
+    if (!health.netOK) {
+        if (lvl < 1) lvl = 1;
+    }
+
+    if (health.sensorFault || health.tempWarn || health.radState == RAD_WARN) {
+        if (lvl < 2) lvl = 2;
+    }
+
+    if (health.tempHigh || health.radState == RAD_DANGER) {
+        if (lvl < 3) lvl = 3;
+    }
+
+    health.level = lvl;
+}
+
 // ----------------- LED Logic -----------------
 
 void updateStatusLED() {
-    bool sensorError = (zeroCount >= ZERO_CPM_FAULT_COUNT);
-    bool tempValid   = (interiorTempC > -100.0f);
-    bool highTemp    = (tempValid && interiorTempC >= HIGH_TEMP_THRESHOLD_C);
-    bool netOK       = (lastFailReason == FAIL_NONE);
+    switch (health.level) {
+        case 3:
+            // Catastrophic → FLASHING RED
+            setLedState(HIGH, LOW, LOW, true);
+            break;
 
-    if (sensorError) {
-        LED_ERROR;
-    } else if (highTemp) {
-        LED_WARN;
-    } else if (netOK) {
-        LED_OK;
-    } else {
-        LED_WARN;
+        case 2:
+            // Serious → SOLID RED
+            setLedState(HIGH, LOW, LOW, false);
+            break;
+
+        case 1:
+            // Warning → SOLID YELLOW
+            setLedState(HIGH, HIGH, LOW, false);
+            break;
+
+        default:
+            // Normal → SOLID GREEN
+            setLedState(LOW, HIGH, LOW, false);
+            break;
     }
 }
 
@@ -245,7 +309,7 @@ void sendStatusPing() {
             RadState rs = getRadiationState(cpm);
 
             const char *radStr;
-            switch (rs) {
+            switch (health.radState) {
                 case RAD_LOW:    radStr = "LOW";    break;
                 case RAD_NORMAL: radStr = "NORM";   break;
                 case RAD_WARN:   radStr = "WARN";   break;
@@ -466,7 +530,7 @@ void setup() {
     pinMode(LED_R, OUTPUT);
     pinMode(LED_G, OUTPUT);
     pinMode(LED_B, OUTPUT);
-    LED_OK;
+    setLedState(LOW, HIGH, LOW, false); // Solid green
 
     dht.begin();
 
@@ -576,7 +640,10 @@ void loop() {
             sendStatusPing();
         }
 
+        updateHealthModel();
         updateStatusLED();
         wdt_reset();
     }
+
+    ledTick();
 }

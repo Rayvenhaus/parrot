@@ -370,6 +370,8 @@ void sendStatusPing() {
             Serial.print(F("?id="));
             Serial.print(DEVICE_ID);
             Serial.print(F("&secret=****"));
+            Serial.print(F("&sn="));
+            Serial.print(SERIAL_NUM);
             Serial.print(F("&fw="));
             Serial.print(FW_VERSION);
             Serial.print(F("&up="));
@@ -378,6 +380,8 @@ void sendStatusPing() {
             Serial.print(cpm);
             Serial.print(F("&rad="));
             Serial.print(radStr);
+            Serial.print(F("&health="));
+            Serial.print(health.level);
             Serial.print(F("&http="));
             Serial.print(lastHttpStatusCode);
             Serial.print(F("&temp="));
@@ -400,6 +404,8 @@ void sendStatusPing() {
             statusClient.print(STATUS_PATH);
             statusClient.print("?id=");
             statusClient.print(DEVICE_ID);
+            statusClient.print("&sn=");
+            statusClient.print(SERIAL_NUM);
             statusClient.print("&secret=");
             statusClient.print(API_SECRET);
             statusClient.print("&fw=");
@@ -410,6 +416,8 @@ void sendStatusPing() {
             statusClient.print(cpm);
             statusClient.print("&rad=");
             statusClient.print(radStr);
+            statusClient.print("&health=");
+            statusClient.print(health.level);
             statusClient.print("&http=");
             statusClient.print(lastHttpStatusCode);
             statusClient.print("&temp=");

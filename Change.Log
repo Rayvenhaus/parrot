@@ -2,6 +2,14 @@ Parrot Firmware Change Log
 ===========================
 Project: Parrot - People's ARduino Radiation mOniTor
 
+Version 1.5.0  (2025-12-07)
+---------------------------
+- Updated firmware version
+- Swap the banner to FW_BUILD.
+- Add the while (!Serial && timeout) block guarded by DEBUG_SERIAL
+- Completely rebuilt health model for device monitoring.
+- Changed status LED to support 4 levels of indication and flashing
+
 Version 1.4.4  (2025-12-07)
 ---------------------------
 - Since removal of OLED screen limits debugging, serial port output was increased for debugging, hence....

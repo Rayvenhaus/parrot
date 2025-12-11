@@ -97,6 +97,44 @@ void setStatusLED(byte r, byte g, byte b) {
 #define LED_WARN     setStatusLED(HIGH, HIGH, LOW)
 #define LED_ERROR    setStatusLED(HIGH, LOW, LOW)
 
+byte ledR = LOW;
+byte ledG = LOW;
+byte ledB = LOW;
+bool ledFlash = false;
+bool ledOn = true;
+unsigned long ledLastToggle = 0;
+const unsigned long LED_FLASH_PERIOD = 500UL;
+
+void applyLed() {
+    if (ledOn) {
+        setStatusLED(ledR, ledG, ledB);
+    } else {
+        setStatusLED(LOW, LOW, LOW);
+    }
+}
+
+void setLedState(byte r, byte g, byte b, bool flash) {
+    ledR = r;
+    ledG = g;
+    ledB = b;
+    ledFlash = flash;
+    ledOn = true;
+    ledLastToggle = millis();
+    applyLed();
+}
+
+void ledTick() {
+    if (!ledFlash) {
+        return;
+    }
+    unsigned long now = millis();
+    if (now - ledLastToggle >= LED_FLASH_PERIOD) {
+        ledLastToggle = now;
+        ledOn = !ledOn;
+        applyLed();
+    }
+}
+
 // ----------------- Fail Reasons -----------------
 
 enum FailReason : uint8_t {
@@ -522,8 +560,15 @@ void setup() {
     netReady = true;
 
     Serial.begin(9600);
+    #if DEBUG_SERIAL
+        // Leonardo: wait briefly for the USB serial port to come up
+        unsigned long serialStart = millis();
+        while (!Serial && (millis() - serialStart < 3000UL)) {
+            ; // wait up to 3 seconds for host to open the port
+        }
+    #endif
     Serial.println();
-    Serial.println(F("Parrot v1.4.4 booting..."));
+    Serial.println(FW_BUILD);
 
     attachInterrupt(digitalPinToInterrupt(2), tube_impulse, FALLING);
 

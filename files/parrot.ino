@@ -39,7 +39,7 @@
 
 // ---------------- Firmware Info ----------------
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.5.1 SafeBoot"
+#define FW_VERSION  "v1.5.1"
 #define SERIAL_NUM  "ENTER_DEVICE_SERIAL_NUM"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 

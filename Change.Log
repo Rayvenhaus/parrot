@@ -2,6 +2,12 @@ Parrot Firmware Change Log
 ===========================
 Project: Parrot - People's ARduino Radiation mOniTor
 
+Version 1.5.1  (2025-12-012)
+---------------------------
+- Added SafeBoot logic to prevent reboot loops if DHCP fails
+- Added DHCP retry loop (3x attempts + 10-min periodic retries)
+- Watchdog now only enabled after network init completes
+
 Version 1.5.0  (2025-12-07)
 ---------------------------
 - Updated firmware version

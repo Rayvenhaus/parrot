@@ -1,6 +1,6 @@
 /*
  * -------------------------------------------------------------
- *  Parrot Prime Firmware v1.5.1 (SafeBoot)
+ *  Parrot Prime Firmware v1.6.0 (African Grey)
  *  Model: Parrot Prime (Leonardo + DFRobot PoE Shield)
  *  Author: Myndworx Asylum - Steven Sheeley
  *  Copyright 2025-2026 - MwA & Steven Sheeley
@@ -17,13 +17,6 @@
  * This code is based on the original work of rjelbert at
  * https://github.com/rjelbert/geiger_counter
  * -------------------------------------------------------------
- * Version 1.5.1 “SafeBoot (Full, Sanitized)”
- *  - Safe watchdog + DHCP logic
- *  - 3× DHCP retry + 10 min periodic recovery
- *  - Non-blocking LED tick
- *  - DHT smoothing filter
- *  - Full Radmon + HQ telemetry restored
- * -------------------------------------------------------------
  */
 
 #include <SPI.h>
@@ -39,7 +32,7 @@
 
 // ---------------- Firmware Info ----------------
 #define FW_NAME     "Parrot"
-#define FW_VERSION  "v1.5.1"
+#define FW_VERSION  "v1.6.0_AfricanGrey"
 #define SERIAL_NUM  "ENTER_DEVICE_SERIAL_NUM"
 #define FW_BUILD    FW_NAME " " FW_VERSION " (" __DATE__ " " __TIME__ ")"
 
@@ -365,6 +358,7 @@ void sendStatusPing() {
 
 // ---------------- Setup ----------------
 void setup() {
+  // -------------------- CORE INITIALIZATION --------------------
   counts = 0; cpm = 0; multiplier = MAX_PERIOD / LOG_PERIOD;
   previousMillis = millis(); bootMillis = millis();
   lastFailReason = FAIL_NONE; lastHttpStatusCode = 0;
@@ -372,50 +366,135 @@ void setup() {
   interiorHum = -1.0f; zeroCount = 0; lastSuccessMillis = 0;
   netReady = true;
 
-  Serial.begin(9600);
-#if DEBUG_SERIAL
-  unsigned long serialStart = millis();
-  while (!Serial && (millis() - serialStart < 3000UL)) {;}
-#endif
-  Serial.println(); Serial.println(FW_BUILD);
+  // -------------------- DEBUG SERIAL & USB SAFE INIT --------------------
+  #if DEBUG_SERIAL
+    Serial.begin(9600);
+    bool usbConnected = false;
+  #  if defined(USBCON)
+    usbConnected = (USBSTA & (1 << VBUS)); // Detect 5 V on USB VBUS line
+  #  endif
+  
+    if (usbConnected) {
+      unsigned long serialStart = millis();
+      while (!Serial && (millis() - serialStart < 3000UL)) { ; }
+      Serial.println();
+      Serial.println(F("[DEBUG] USB detected — Debug Mode ACTIVE"));
+  
+      // --- LED SETUP BEFORE MANIPULATION ---
+      pinMode(LED_R, OUTPUT);
+      pinMode(LED_G, OUTPUT);
+      pinMode(LED_B, OUTPUT);
+  
+      // --- FLASHING BLUE LED (non-blocking) ---
+      ledR = LOW;
+      ledG = LOW;
+      ledB = HIGH;
+      ledFlash = true;
+      ledOn = true;
+      ledLastToggle = millis();
+      applyLed();
+    } else {
+      Serial.end(); // skip USB completely in headless mode
+    }
+  #else
+    // Non-debug: still initialise LED pins early
+    pinMode(LED_R, OUTPUT);
+    pinMode(LED_G, OUTPUT);
+    pinMode(LED_B, OUTPUT);
+  #endif
+  
+    if (
+    #if DEBUG_SERIAL
+          usbConnected
+    #else
+          false
+    #endif
+    ) {
+    Serial.println();
+    Serial.println(FW_BUILD);
+  }
 
+  // -------------------- SENSOR + INTERRUPTS --------------------
   attachInterrupt(digitalPinToInterrupt(2), tube_impulse, FALLING);
-  pinMode(LED_R, OUTPUT); pinMode(LED_G, OUTPUT); pinMode(LED_B, OUTPUT);
-  setLedState(LOW, HIGH, LOW, false);
+  setLedState(LOW, HIGH, LOW, false); // solid green until health eval
   dht.begin();
 
-  // PoE shield reset
-  pinMode(SS, OUTPUT); pinMode(RST, OUTPUT);
-  digitalWrite(SS, HIGH); digitalWrite(RST, HIGH);
-  delay(200); digitalWrite(RST, LOW);
-  delay(200); digitalWrite(RST, HIGH);
-  delay(200); digitalWrite(SS, LOW);
+  // -------------------- PoE SHIELD RESET SEQUENCE --------------------
+  pinMode(SS, OUTPUT);
+  pinMode(RST, OUTPUT);
+  digitalWrite(SS, HIGH);
+  digitalWrite(RST, HIGH);
+  delay(200);
+  digitalWrite(RST, LOW);
+  delay(200);
+  digitalWrite(RST, HIGH);
+  delay(200);
+  digitalWrite(SS, LOW);
+
   Ethernet.init(10);
   delay(1000);
 
-  // SafeBoot DHCP init
-  if (attemptDHCP()) {
+  // -------------------- DHCP INITIALIZATION WITH VISUAL FEEDBACK --------------------
+  
+  // Up to three DHCP attempts with LED signalling
+  const uint8_t DHCP_RETRIES = 3;
+  bool dhcpSuccess = false;
+  
+  for (uint8_t attempt = 1; attempt <= DHCP_RETRIES && !dhcpSuccess; attempt++) {
+    #if DEBUG_SERIAL
+      Serial.print(F("[ETH] Attempting DHCP (try "));
+      Serial.print(attempt);
+      Serial.println(F(" of 3)"));
+    #endif
+  
+    // Flash yellow while trying to get an address
+    setLedState(HIGH, HIGH, LOW, true);   // flashing yellow
+    wdt_reset();                           // keep watchdog happy
+  
+    dhcpSuccess = attemptDHCP();
+  
+    if (!dhcpSuccess && attempt < DHCP_RETRIES) {
+      #if DEBUG_SERIAL
+        Serial.println(F("[ETH] DHCP failed, retrying..."));
+      #endif
+      // Flash red briefly to show retry failure
+      setLedState(HIGH, LOW, LOW, true);
+      unsigned long failBlink = millis();
+      while (millis() - failBlink < 1000UL) { ledTick(); } // 1-s red flash
+    }
+  
+    wdt_reset();
+  }
+  
+  // Evaluate result
+  if (dhcpSuccess) {
     netReady = true;
     lastFailReason = FAIL_NONE;
-#if DEBUG_SERIAL
-    Serial.print(F("[ETH] DHCP OK. IP: "));
-    Serial.println(Ethernet.localIP());
-#endif
+    #if DEBUG_SERIAL
+      Serial.print(F("[ETH] DHCP OK. IP: "));
+      Serial.println(Ethernet.localIP());
+    #endif
+    setLedState(LOW, HIGH, LOW, false);  // solid green
   } else {
     netReady = false;
     lastFailReason = FAIL_DHCP;
-#if DEBUG_SERIAL
-    Serial.println(F("[ETH] DHCP failed after retries. Offline mode."));
-#endif
+    #if DEBUG_SERIAL
+      Serial.println(F("[ETH] DHCP failed after 3 attempts. Offline mode."));
+    #endif
+    setLedState(HIGH, HIGH, LOW, false); // solid yellow (warning)
   }
 
+
+  // -------------------- FINALISE --------------------
   wdt_enable(WDTO_8S);
   updateHealthModel();
   updateStatusLED();
-#if DEBUG_SERIAL
-  Serial.println(F("[BOOT] System initialized. SafeBoot active."));
-#endif
-}
+
+  #if DEBUG_SERIAL
+    if (usbConnected) Serial.println(F("[BOOT] System initialized. SafeBoot active."));
+  #endif
+  }
+
 // ---------------- Main Loop ----------------
 void loop() {
   wdt_reset();

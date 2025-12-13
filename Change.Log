@@ -2,6 +2,28 @@ Parrot Firmware Change Log
 ===========================
 Project: Parrot - People's ARduino Radiation mOniTor
 
+Version 1.6.0  (2025-12-12)  “African Grey”
+--------------------------------------------
+- Major stability release for field-deployed Parrot Prime units.
+- Added full USB-safe boot sequence for Leonardo boards:
+  - Detects host presence via VBUS (USBSTA & (1 << VBUS)).
+  - Waits up to 3 s for Serial enumeration when USB connected.
+  - Skips Serial entirely when PoE-powered or headless.
+- Added flashing-blue LED indicator for Debug Mode (USB connected + DEBUG_SERIAL=1).
+- Rebuilt setup() sequence for deterministic startup and watchdog safety.
+- Added three-stage DHCP retry logic with visual feedback:
+  - Flashing yellow while acquiring lease.
+  - 1-second red flash between failed attempts.
+  - Solid green on success / solid yellow on offline fallback.
+- Integrated watchdog resets throughout DHCP negotiation.
+- Bootloader capture window restored — IDE uploads succeed even with DEBUG enabled.
+- Pin-initialisation order corrected (LED pins now set as OUTPUT before use).
+- Serial printing now conditional on USB connection.
+- Updated comments and section headers for clarity.
+- Prepared for DHT11 → SHT31-DIS-B (I²C) sensor migration.
+- Documented dual-vent IP65 “HardShell” enclosure spec for high-heat (0 – 45 °C ambient) installations.
+- Sanitised for GitHub: DEVICE_ID, API_SECRET, RADMON_USER, RADMON_PASS placeholders.
+
 Version 1.5.1  (2025-12-012)
 ---------------------------
 - Added SafeBoot logic to prevent reboot loops if DHCP fails
